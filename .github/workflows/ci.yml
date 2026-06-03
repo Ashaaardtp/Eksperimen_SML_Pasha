@@ -26,7 +26,7 @@ jobs:
 
       - name: Run MLflow Project
         run: |
-          mlflow run . --entry-point main --env-manager=local
+          mlflow run Workflow-CI/MLProject --entry-point main --env-manager=local
 
       - name: Save model to separate branch (skilled)
         run: |
