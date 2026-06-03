@@ -1,0 +1,53 @@
+name: MLflow Retraining CI
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'MLProject/**'
+  workflow_dispatch:
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install mlflow pandas numpy scikit-learn
+
+      - name: Run MLflow Project
+        run: |
+          mlflow run MLProject/ --env-manager=local
+
+      - name: Save model to separate branch (skilled)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Cari file model terbaru dari mlruns
+          MODEL_FILE=$(find MLProject/mlruns -name "model.pkl" | head -n 1)
+          if [ -f "$MODEL_FILE" ]; then
+            git checkout --orphan models
+            mkdir -p saved_models
+            cp "$MODEL_FILE" saved_models/model_$(date +'%Y%m%d_%H%M%S').pkl
+            git add saved_models/
+            git commit -m "Add retrained model [skip ci]"
+            git push origin models --force
+          else
+            echo "Model file not found"
+          fi
+        continue-on-error: true
+
+      - name: Upload MLflow artifacts (opsional)
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlflow-artifacts
+          path: MLProject/mlruns/
