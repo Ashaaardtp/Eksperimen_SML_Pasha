@@ -26,7 +26,8 @@ jobs:
 
       - name: Run MLflow Project
         run: |
-          rm -rf MLProject/mlruns
+          export MLFLOW_BACKEND_STORE_URI="file:$(pwd)/mlflow_backend"
+          export MLFLOW_DEFAULT_ARTIFACT_ROOT="$(pwd)/mlflow_artifacts"
           mlflow run Workflow-CI/MLProject --entry-point main --env-manager=local
 
       - name: Save model to separate branch (skilled)
