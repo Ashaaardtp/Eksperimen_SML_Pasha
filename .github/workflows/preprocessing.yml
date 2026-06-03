@@ -1,0 +1,98 @@
+name: Advanced Preprocessing Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'preprocessing/*.py'
+  workflow_dispatch:
+    inputs:
+      force_reprocess:
+        description: 'Force reprocess dataset'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  validate-and-preprocess:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip
+        pip install pandas numpy scikit-learn pytest
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    
+    - name: Verify dataset URL accessibility
+      run: |
+        python -c "
+import requests
+url = 'https://raw.githubusercontent.com/ageron/handson-ml2/master/datasets/housing/housing.csv'
+response = requests.head(url, timeout=10)
+assert response.status_code == 200, f'Dataset tidak dapat diakses: {response.status_code}'
+print('Dataset URL valid dan dapat diakses.')
+"
+    
+    - name: Run preprocessing pipeline
+      id: preprocess
+      run: |
+        python preprocessing/automate_YourName.py
+        echo "preprocessed=true" >> $GITHUB_OUTPUT
+    
+    - name: Validate preprocessed data
+      run: |
+        python -c "
+import pandas as pd
+import os
+X_train = pd.read_csv('preprocessed_data/X_train_preprocessed.csv')
+X_test = pd.read_csv('preprocessed_data/X_test_preprocessed.csv')
+assert X_train.shape[0] > 0, 'Training set kosong'
+assert X_test.shape[0] > 0, 'Test set kosong'
+print(f'Validasi berhasil: Training={X_train.shape[0]}, Test={X_test.shape[0]}, Features={X_train.shape[1]}')
+"
+    
+    - name: Upload preprocessed dataset
+      uses: actions/upload-artifact@v4
+      with:
+        name: housing-preprocessed-${{ github.run_id }}
+        path: |
+          preprocessed_data/
+          !preprocessed_data/__pycache__
+        retention-days: 14
+    
+    - name: Update preprocessing timestamp
+      if: steps.preprocess.outputs.preprocessed == 'true'
+      run: |
+        echo "Last successful preprocessing: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" > preprocessing/last_run.txt
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add preprocessing/last_run.txt
+        git diff --cached --quiet || git commit -m "docs: update preprocessing timestamp [skip ci]"
+        git push
+    
+    - name: Send notification (optional)
+      if: always()
+      run: |
+        echo "Preprocessing workflow completed. Status: ${{ job.status }}"
