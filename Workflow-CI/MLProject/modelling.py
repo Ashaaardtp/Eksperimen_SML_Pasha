@@ -17,7 +17,6 @@ def main():
     y_train = pd.read_csv(os.path.join(data_dir, "y_train.csv")).values.ravel()
     y_test = pd.read_csv(os.path.join(data_dir, "y_test.csv")).values.ravel()
     
-    mlflow.set_tracking_uri("sqlite:///mlflow.db")
     mlflow.set_experiment("CI_Retraining")
     
     with mlflow.start_run(run_name="CI_Run"):
