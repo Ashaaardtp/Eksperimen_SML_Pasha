@@ -11,7 +11,7 @@ warnings.filterwarnings("ignore")
 
 def main():
  
-    data_dir = "california_housing_preprocessed"
+    data_dir = "Melatih_model/california_housing_preprocessed"
     X_train = pd.read_csv(os.path.join(data_dir, "X_train_preprocessed.csv"))
     X_test = pd.read_csv(os.path.join(data_dir, "X_test_preprocessed.csv"))
     y_train = pd.read_csv(os.path.join(data_dir, "y_train.csv")).values.ravel()
